@@ -1,43 +1,56 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 
-import Tasks from './components/Tasks/Tasks';
-import NewTask from './components/NewTask/NewTask';
+import Tasks from "./components/Tasks/Tasks";
+import NewTask from "./components/NewTask/NewTask";
+import useHttp from "./hooks/use-http";
 
 function App() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [tasks, setTasks] = useState([]);
 
-  const fetchTasks = async (taskText) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(
-        'https://reacthttp-f4741-default-rtdb.firebaseio.com/tasks.json'
-      );
+//to ensure the state sdoesnt chaneg again and again, we can either use useCallback like below
 
-      if (!response.ok) {
-        throw new Error('Request failed!');
-      }
+//SOlution: 1
+  // const transformedTasks = useCallback((taskObj) => {
+  //   const loadedTasks = [];
 
-      const data = await response.json();
+  //   for (const taskKey in taskObj) {
+  //     loadedTasks.push({ id: taskKey, text: taskObj[taskKey].text });
+  //   }
 
-      const loadedTasks = [];
+  //   setTasks(loadedTasks);
+  // }, []);
 
-      for (const taskKey in data) {
-        loadedTasks.push({ id: taskKey, text: data[taskKey].text });
-      }
+  // const returnedObj = useHttp(transformedTasks);
 
-      setTasks(loadedTasks);
-    } catch (err) {
-      setError(err.message || 'Something went wrong!');
-    }
-    setIsLoading(false);
-  };
+  // const {isLoading, error, sendReq: fetchTasks} = returnedObj;
 
+  // //here useEffect dont know about fetchTaks for now, but wont do it as it will create infinte loop, so a better way to do it,
+  // useEffect(() => {
+  //   fetchTasks(
+  //    { url: "https://reacthttp-f4741-default-rtdb.firebaseio.com/tasks.json"});
+  // }, [fetchTasks]);
+
+  //Solution: 2 , using useEffect only
+
+  const returnedObj = useHttp();
+
+  const {isLoading, error, sendReq: fetchTasks} = returnedObj;
+
+  //here useEffect dont know about fetchTaks for now, but wont do it as it will create infinte loop, so a better way to do it,
   useEffect(() => {
-    fetchTasks();
-  }, []);
+    const transformedTasks = (taskObj) => {
+      const loadedTasks = [];
+  
+      for (const taskKey in taskObj) {
+        loadedTasks.push({ id: taskKey, text: taskObj[taskKey].text });
+      }
+  
+      setTasks(loadedTasks);
+    };
+    fetchTasks(
+     { url: "https://reacthttp-f4741-default-rtdb.firebaseio.com/tasks.json"}, transformedTasks);
+  }, [fetchTasks]);
+
 
   const taskAddHandler = (task) => {
     setTasks((prevTasks) => prevTasks.concat(task));
